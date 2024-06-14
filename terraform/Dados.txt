@@ -1,0 +1,127 @@
+Terraform
+- terraform version
+- terraform init = start
+- terraform plan = execution plan
+- terraform apply = apply changes
+- terraform destroy = destroy infrastructure
+- terraform plan -out (plan_name) = output plan
+- terraform plan -destroy = output destroy plan
+- terraform apply (plan_name) = apply specific plan
+- terraform apply -target=(resource_name) = only apply changes to a targeted resource_name
+- terraform apply -var my_variable=(variable) = pass a variable via the command line
+- terraform providers = get provider info used in configuration
+etc...
+______________________________
+
+File Extension:
+
+.tf = where code in Terraform language is stored
+.tf.json = variant json of the language
+
+Modules:
+collection of .tf and/or .tf.json files kept together in a directory
+
+______________________________
+
+Variables
+
+Here is a list of the optional Arguments and Type Constraints that can be used:
+
+Arguments:
+
+ default - Default value which then makes the variable optional.
+ type - Specifies what value types are accepted for the variable.
+ description - Specifies the input variable’s documentation.
+ validation - Defines validation rules, usually in addition to type constraints.
+ sensitive - This limits the Terraform UI output when the variable is used in the configuration.
+Type Constraints
+
+string
+number
+bool
+Type Constructors that can be used with Type Constraints
+
+list(<TYPE>)
+set(<TYPE>)
+map(<TYPE>)
+object({<ATTR_NAME> = <TYPE>, … })
+tuple([<TYPE>, …])
+
+________________________________ 
+
+Terraform Locals
+
+Terraform Locals 
+Podemos definir o locals com seguinte bloco:
+locals{  
+    
+    local_name = "local_value"
+}
+Agora vamos ver um exemplo de uso do Terraform Locals. Abaixo temos um exemplo que estamos criando uma vpc, subnet e instanciando ec2 na aws. Aqui pode ser visto que a expressão maria-quiteria nas tags de cada resource pode ser substituida pelo terraform locals tornando o codigo mais limpo.
+ resource "aws_vpc" "vpc-web-maria-quiteria" {
+  cidr_block = "10.0.0.0/16"
+  tags = {
+    Name = "vpc-maria-quiteria" 
+  }
+}
+
+resource "aws_subnet" "sub-web-maria-quiteria" {
+  vpc_id     = aws_vpc.vpc-web-maria-quiteria.id
+  cidr_block = "10.0.0.0/16"
+  tags = {
+    Name = "sub-maria-quiteria"
+  }
+}
+
+resource "aws_instance" "ec2-maria-quiteria" {
+  ami           = "ami-09d3b3274b6c5d4aa"
+  instance_type = "t2.micro"
+  subnet_id     = aws_subnet.sub-web-maria-quiteria.id
+
+
+  tags = {
+    Name = "ec2-maria-quiteria"
+    env  = "prod-maria-quiteria"
+  }
+} 
+Codigo com Terraform Local
+Em vez de ser usado valor estático como acima, podemos ver que podemos substituir uma parte do texto nas tags de cada resource com a variavel setup_name nomeada no bloco locals. 
+ locals {
+  setup_name = "maria-quiteria"
+}
+
+
+
+resource "aws_vpc" "vpc-web-maria-quiteria" {
+  cidr_block = "10.0.0.0/16"
+  tags = {
+    Name = "vpc-${local.setup_name}"
+  }
+}
+
+
+resource "aws_subnet" "sub-web-maria-quiteria" {
+  vpc_id     = aws_vpc.vpc-web-maria-quiteria.id
+  cidr_block = "10.0.0.0/16"
+  tags = {
+    Name = "sub-${local.setup_name}"
+  }
+}
+
+
+resource "aws_instance" "ec2-maria-quiteria" {
+  ami           = "ami-09d3b3274b6c5d4aa"
+  instance_type = "t2.micro"
+  subnet_id     = aws_subnet.sub-web-maria-quiteria.id
+
+
+  tags = {
+    Name = "ec2-${local.setup_name}"
+    env  = "prod-${local.setup_name}"
+  }
+} 
+
+______________________________
+
+
+
