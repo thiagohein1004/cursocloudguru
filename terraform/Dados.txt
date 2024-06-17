@@ -123,5 +123,20 @@ resource "aws_instance" "ec2-maria-quiteria" {
 
 ______________________________
 
+Modules:
+
+Are containers for multiples resources
+
+consist of .tf as well as .tf.json
+
+______________________________
+
+Expressions x Functions
+
+Expressions are used to reference / compute values within a configuration
+
+Functions are used to transform and combine values within expressions
+
+
 
 
