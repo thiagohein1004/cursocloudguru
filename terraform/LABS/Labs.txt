@@ -1,0 +1,528 @@
+LAB01
+
+LAB:
+
+Installing Terraform and Working With Terraform Providers
+Introduction
+In this hands-on lab, we'll go through installing and configuring Terraform version 13 on a Linux OS. We will also explore how to select and use a Terraform provider from among the many providers available publicly.
+
+Solution
+Log in to the lab server using the credentials provided:
+
+ssh cloud_user@<PublicIP>
+In a web browser, log in to the AWS Management Console using the credentials provided.
+
+Download And Manually Install the Terraform Binary
+Download the appropriate Terraform binary package for the provided lab server VM (Linux 64-bit) using the wget command:
+
+wget -c https://releases.hashicorp.com/terraform/0.13.4/terraform_0.13.4_linux_amd64.zip
+Unzip the downloaded file:
+
+unzip terraform_0.13.4_linux_amd64.zip
+Place the Terraform binary in the PATH of the VM operating system so the binary is accessible system-wide to all users:
+
+sudo mv terraform /usr/sbin/
+Note: If prompted, enter the username and password provided for the lab server.
+
+Check the Terraform version information:
+
+terraform version
+Since the Terraform version is returned, you have validated that the Terraform binary is installed and working properly.
+
+Clone Over Code for Terraform Providers
+Create a providers directory:
+
+mkdir providers
+Move into the providers directory:
+
+cd providers/
+Create the file main.tf:
+
+vim main.tf
+Paste in the following code from the provided GitHub repo:
+
+provider "aws" {
+  alias  = "us-east-1"
+  region = "us-east-1"
+}
+
+provider "aws" {
+  alias  = "us-west-2"
+  region = "us-west-2"
+}
+
+
+resource "aws_sns_topic" "topic-us-east" {
+  provider = aws.us-east-1
+  name     = "topic-us-east"
+}
+
+resource "aws_sns_topic" "topic-us-west" {
+  provider = aws.us-west-2
+  name     = "topic-us-west"
+}
+To save and exit the file, press Escape and enter :wq.
+
+Deploy the Code with Terraform Apply
+Enable verbose output logging for Terraform commands using TF_LOG=TRACE:
+
+export TF_LOG=TRACE
+Note: You can turn off verbose logging at any time using the export TF_LOG= command.
+
+Initialize the working directory where the code is located:
+
+terraform init
+Review the actions performed when you deploy the Terraform code:
+
+terraform plan
+Note: Two resources will be created, consistent with the providers that were configured in the provided code snippet.
+
+Deploy the code:
+
+terraform apply
+When prompted, type yes and press Enter.
+
+Verify that two resources were created with their corresponding Amazon Resource Name (ARN) IDs in the region in which they were spun up.
+
+Optionally, verify that the resources were created in their respective regions within the AWS Management Console:
+
+Navigate to the AWS Management Console in your browser.
+Verify that you are logged in to the us-east-1 region upon signing in.
+Click Services.
+Type SNS in the search bar and select Simple Notification Service from the contextual menu.
+In the menu on the left, click Topics.
+Verify that the topic-us-east resource appears in the list.
+At the top-right, click N. Virginia and select us-west-2.
+Verify that the topic-us-west resource appears in the list.
+Tear down the infrastructure you just created before moving on:
+
+terraform destroy --auto-approve
+Conclusion
+Congratulations — you've completed this hands-on lab!
+
+______________________________
+
+LAB02
+
+Using Terraform CLI Commands (workspace and state) to Manipulate a Terraform Deployment
+Introduction
+In this hands-on lab, we will create two distinct, parallel environments against the same Terraform code using the terraform workspace command. We will also use the terraform state command to see what resources are being tracked in the state files of the different workspaces.
+
+Solution
+Log in to the lab server using the credentials provided:
+
+ssh cloud_user@<Terraform-Controller>
+In a web browser, log in to the AWS Management Console using the credentials provided.
+
+Clone Terraform Code and Switch to the Proper Directory
+Clone the required code from the provided repository:
+
+git clone https://github.com/linuxacademy/content-hashicorp-certified-terraform-associate-foundations.git
+Switch to the directory where the code is located:
+
+cd content-hashicorp-certified-terraform-associate-foundations/section4-lesson3/
+List the files in the directory:
+
+ls
+The files in the directory should include main.tf and network.tf. These files basically use the ${terraform.workspace} variable to create parallel environments and decide which region the deployment occurs in, depending on the workspace you're in.
+
+Create a New Workspace
+Check that no workspace other than the default one currently exists:
+
+terraform workspace list
+The output should only show the default workspace. This workspace cannot be deleted.
+
+Note: When you use the terraform workspace list command to view the existing workspaces, the workspace which you are currently inside will be prepended with an asterisk (*) in front of the workspace name.
+
+Create a new workspace named test:
+
+terraform workspace new test
+You will be automatically switched into the newly created test workspace upon successful completion. However, you can confirm this using the terraform workspace list command if you'd like.
+
+Deploy Infrastructure in the Test Workspace and Confirm Deployment via AWS
+In the test workspace, initialize the working directory and download the required providers:
+
+terraform init
+View the contents of the main.tf file using the cat command:
+
+cat main.tf
+Note the configurations in the main.tf code, particularly:
+
+AWS is the selected provider.
+If the code is deployed on the default workspace, the resources will be deployed in the us-east-1 region.
+If the code is deployed on any other workspace, the resources will be deployed in the us-west-2 region.
+In the code creating the EC2 virtual machine, we have embedded the $terraform.workspace variable in the Name attribute, so we can easily distinguish those resources when they are created within their respective workspaces by their name: <workspace name>-ec2.
+View the contents of the network.tf file:
+
+cat network.tf
+Note the configurations in the network.tf code, particularly:
+
+In the code creating the security group resource, we have embedded the $terraform.workspace variable in the Name attribute, so we can easily distinguish those resources when they are created within their respective workspaces by their name: <workspace name>-securitygroup.
+Deploy the code in the test workspace:
+
+terraform apply --auto-approve
+Note: The --auto-approve flag will prevent Terraform from prompting you to enter yes explicitly before it deploys the code.
+
+Once the code has executed successfully, confirm that Terraform is tracking resources in this workspace:
+
+terraform state list
+There should be a number of resources being tracked, including the resources spun up by the code just deployed.
+
+Switch over to the default workspace:
+
+terraform workspace select default
+Confirm that Terraform is currently not tracking any resources in this workspace, as nothing has been deployed:
+
+terraform state list
+The return output should say that No state file was found! for this workspace.
+
+Verify that the deployment in the test workspace was successful by viewing the resources that were created in the AWS Management Console:
+
+Navigate to the AWS Management Console in your browser.
+Click on N. Virginia (the us-east-1 region) at the top-right to engage the Region drop-down, and select US West (Oregon), or us-west-2.
+Expand the Services drop-down and select EC2.
+On the Resources page, click Instances.
+Verify that the test-ec2 instance appears in the list.
+In the menu on the left, click Security Groups.
+Verify that the test-securitygroup resource appears in the list.
+Deploy Infrastructure in the Default Workspace and Confirm Deployment via AWS
+Back in the CLI, verify that you are still within the default workspace:
+
+terraform workspace list
+Again, the asterisk (*) prepended to the name confirms you are in the default workspace.
+
+Deploy the code again, this time in the default workspace:
+
+terraform apply --auto-approve
+Once the code has executed successfully, confirm that Terraform is now tracking resources in this workspace:
+
+terraform state list
+There should now be a number of resources being tracked, including the resources spun up by the code just deployed.
+
+Verify that the deployment in the default workspace was successful by viewing the resources that were created in the AWS Management Console:
+
+Navigate to the AWS Management Console in your browser.
+Click on Oregon (the us-west-2 region) at the top-right to engage the Region drop-down, and select US East (N. Virginia), or us-east-1.
+As you are already on the Security Groups page, verify that the default-securitygroup resource appears in the list.
+In the menu on the left, click Instances.
+Verify that the default-ec2 instance appears in the list.
+Destroy Resources in the Test Workspace and Delete the Workspace
+Back in the CLI, switch over to the test workspace:
+
+terraform workspace select test
+Tear down the infrastructure you just created in the test workspace:
+
+terraform destroy --auto-approve
+Verify that the resources were terminated in the AWS Management Console:
+
+Navigate to the AWS Management Console in your browser.
+Click on N. Virginia (the us-east-1 region) at the top-right to engage the Region drop-down, and select US West (Oregon), or us-west-2.
+As you are already on the Instances page, verify that the test-ec2 instance is shutting down or may have already been terminated.
+In the menu on the left, click Security Groups.
+Verify that the test-securitygroup resource no longer appears in the list.
+Note: It may take some time for the resources to be terminated in the AWS Management Console, and you may need to refresh the browser a few times to confirm that the resources have been destroyed.
+
+Back in the CLI, switch over to the default workspace:
+
+terraform workspace select default
+Delete the test workspace:
+
+terraform workspace delete test
+Tear down the infrastructure you just created in the default workspace before moving on:
+
+terraform destroy --auto-approve
+Conclusion
+Congratulations — you've completed this hands-on lab!
+
+______________________________
+
+LAB03
+
+Building And Testing a Basic Terraform Module
+Introduction
+Terraform modules are a good way to abstract out repeated chunks of code, making it reusable across other Terraform projects and configurations. In this hands-on lab, we'll be writing a basic Terraform module from scratch and then testing it out.
+
+Solution
+Log in to the lab server using the credentials provided:
+
+ssh cloud_user@<Terraform-Controller>
+Create the Directory Structure for the Terraform Project
+Check the Terraform status using the version command:
+
+terraform version
+Since the Terraform version is returned, you have validated that the Terraform binary is installed and functioning properly.
+
+Note: If you receive a notification that there is a newer version of Terraform available, you can ignore it — the lab will run safely with the version installed on the VM.
+
+Create a new directory called terraform_project to house your Terraform code:
+
+mkdir terraform_project
+Switch to this main project directory:
+
+cd terraform_project
+Create a custom directory called modules and a directory inside it called vpc:
+
+mkdir -p modules/vpc
+Switch to the vpc directory using the absolute path:
+
+cd /home/cloud_user/terraform_project/modules/vpc/
+Write Your Terraform VPC Module Code
+Using Vim, create a new file called main.tf:
+
+vim main.tf
+In the file, insert and review the provided code:
+
+provider "aws" {
+  region = var.region
+}
+
+resource "aws_vpc" "this" {
+  cidr_block = "10.0.0.0/16"
+}
+
+resource "aws_subnet" "this" {
+  vpc_id     = aws_vpc.this.id
+  cidr_block = "10.0.1.0/24"
+}
+
+data "aws_ssm_parameter" "this" {
+  name = "/aws/service/ami-amazon-linux-latest/amzn2-ami-hvm-x86_64-gp2"
+}
+Press Escape and enter :wq to save and exit the file.
+
+Create a new file called variables.tf:
+
+vim variables.tf
+In the file, insert and review the provided code:
+
+variable "region" {
+  type    = string
+  default = "us-east-1"
+}
+Press Escape and enter :wq to save and exit the file.
+
+Create a new file called outputs.tf:
+
+vim outputs.tf
+In the file, insert and review the provided code:
+
+output "subnet_id" {
+  value = aws_subnet.this.id
+}
+
+output "ami_id" {
+  value = data.aws_ssm_parameter.this.value
+}
+Note: The code in outputs.tf is critical to exporting values to your main Terraform code, where you'll be referencing this module. Specifically, it returns the subnet and AMI IDs for your EC2 instance.
+
+Press Escape and enter :wq to save and exit the file.
+
+Write Your Main Terraform Project Code
+Switch to the main project directory:
+
+cd ~/terraform_project
+Create a new file called main.tf:
+
+vim main.tf
+In the file, insert and review the provided code:
+
+variable "main_region" {
+  type    = string
+  default = "us-east-1"
+}
+
+provider "aws" {
+  region = var.main_region
+}
+
+module "vpc" {
+  source = "./modules/vpc"
+  region = var.main_region
+}
+
+resource "aws_instance" "my-instance" {
+  ami           = module.vpc.ami_id
+  subnet_id     = module.vpc.subnet_id
+  instance_type = "t2.micro"
+}
+Note: The code in main.tf invokes the VPC module that you created earlier. Notice how you're referencing the code using the source option within the module block to let Terraform know where the module code resides.
+
+Press Escape and enter :wq to save and exit the file.
+
+Create a new file called outputs.tf:
+
+vim outputs.tf
+In the file, insert and review the provided code:
+
+output "PrivateIP" {
+  description = "Private IP of EC2 instance"
+  value       = aws_instance.my-instance.private_ip
+}
+Press Escape and enter :wq to save and exit the file.
+
+Deploy Your Code and Test Out Your Module
+Format the code in all of your files in preparation for deployment:
+
+terraform fmt -recursive
+Initialize the Terraform configuration to fetch any required providers and get the code being referenced in the module block:
+
+terraform init
+Validate the code to look for any errors in syntax, parameters, or attributes within Terraform resources that may prevent it from deploying correctly:
+
+terraform validate
+You should receive a notification that the configuration is valid.
+
+Review the actions that will be performed when you deploy the Terraform code:
+
+terraform plan
+In this case, it will create 3 resources, which includes the EC2 instance configured in the root code and any resources configured in the module. If you scroll up and view the resources that will be created, any resource with module.vpc in the name will be created via the module code, such as module.vpc.aws_vpc.this.
+
+Deploy the code:
+
+terraform apply --auto-approve
+Note: The --auto-approve flag will prevent Terraform from prompting you to enter yes explicitly before it deploys the code.
+
+Once the code has executed successfully, note in the output that 3 resources have been created and the private IP address of the EC2 instance is returned as was configured in the outputs.tf file in your main project code.
+
+View all of the resources that Terraform has created and is now tracking in the state file:
+
+terraform state list
+The list of resources should include your EC2 instance, which was configured and created by the main Terraform code, and 3 resources with module.vpc in the name, which were configured and created via the module code.
+
+Tear down the infrastructure you just created before moving on:
+
+terraform destroy
+When prompted, type yes and press Enter.
+
+Conclusion
+Congratulations — you've completed this hands-on lab!
+
+______________________________
+
+LAB04
+
+Exploring Terraform State Functionality
+Introduction
+Understanding and being comfortable with Terraform state is crucial to mastering it. In this hands-on lab, we will deploy resources using Kubernetes, a container orchestration tool, and see how Terraform maintains a state file to track changes and deploy containers declaratively.
+
+Solution
+Log in to the lab server using the credentials provided:
+
+ssh cloud_user@<PublicIP>
+Check Terraform and Minikube Status
+Check the Terraform status using the version command:
+
+terraform version
+Since the Terraform version is returned, you have validated that Terraform is installed and functioning properly.
+
+Note: If you receive a notification that there is a newer version of Terraform available, you can ignore it — the lab will run safely with the version installed on the VM.
+
+Check the minikube status:
+
+minikube status
+The minikube status command should return host,kubelet, and apiserver in Running state and kubeconfig in Configured state. It will look something similar to this:
+
+minikube
+type: Control Plane
+host: Running
+kubelet: Running
+apiserver: Running
+kubeconfig: Configured
+Clone Terraform Code
+The Terraform code required for this lab has already been cloned onto the provided VM. Switch to the directory where the code is located:
+
+cd lab_code/
+cd section2-hol1/
+View the code in the main.tf file:
+
+vim main.tf
+The code is configured with Kubernetes as the provider, allowing Terraform to interact with the Kubernetes API to create and destroy resources. Within the kubernetes_deployment resource, the replicas attribute controls the number of deployments, which in turn controls the number of pods being deployed.
+
+Press Escape and enter :q! to exit the file.
+
+Deploy Terraform Code And Observe the State File
+Deploy the Cloned Terraform Code
+Initialize the working directory and download the required providers:
+
+terraform init
+Review the actions that will be performed when you deploy the Terraform code:
+
+terraform plan
+In this case, it will create 2 resources as configured in the Terraform code.
+
+List the files in the directory:
+
+ls
+Notice that the list of files does not include the terraform.tfstate at this time. You must deploy the Terraform code for the state file to be created.
+
+Deploy the code:
+
+terraform apply
+When prompted, type yes and press Enter.
+
+Observe How the Terraform State File Tracks Resources
+Once the code has executed successfully, list the files in the directory:
+
+ls
+Notice that the terraform.tfstate file is now listed. This state file tracks all the resources that Terraform has created.
+
+Optionally, verify that the pods required were created by the code as configured using kubectl:
+
+kubectl get pods
+There are currently 2 pods in the deployment.
+
+List all the resources being tracked by the Terraform state file using the terraform state command:
+
+terraform state list
+There are two resources being tracked: kubernetes_deployment.tf-k8s-deployment and kubernetes_service.tf-k8s-service.
+
+View the replicas attribute being tracked by the Terraform state file using grep and the kubernetes_deployment.tf-k8s-deployment resource:
+
+terraform state show kubernetes_deployment.tf-k8s-deployment | egrep replicas
+There should be 2 replicas being tracked by the state file.
+
+Open the main.tf file to edit it:
+
+vim main.tf
+Change the integer value for the replicas attribute from 2 to 4.
+
+Press Escape and enter :wq to save and exit the file.
+
+Review the actions that will be performed when you deploy the Terraform code:
+
+terraform plan
+In this case, 1 resource will change: the kubernetes_deployment.tf-k8s-deployment resource for which we have updated the replicas attribute in our Terraform code.
+
+Deploy the code again:
+
+terraform apply
+When prompted, type yes and press Enter.
+
+Optionally, verify that the pods required were created by the code as configured:
+
+kubectl get pods
+There are now 4 pods in the deployment.
+
+View the replicas attribute being tracked by the Terraform state file again:
+
+terraform state show kubernetes_deployment.tf-k8s-deployment | egrep replicas
+There should now be 4 replicas being tracked by the Terraform state file. It is accurately tracking all changes being made to the Terraform code.
+
+Tear Down the Infrastructure
+Remove the infrastructure you just created:
+
+terraform destroy
+When prompted, type yes and press Enter.
+
+List the files in the directory:
+
+ls
+Notice that Terraform leaves behind a backup file — terraform.tfstate.backup — in case you need to recover to the last deployed Terraform state.
+
+Conclusion
+Congratulations — you've completed this hands-on lab!
+
+______________________________
+
+
+
