@@ -1,0 +1,29 @@
+https://registry.terraform.io/ 
+
+https://registry.terraform.io/providers/hashicorp/aws/latest/docs 
+
+Exemplos:
+
+Provider - 
+
+terraform {
+  required_providers {
+    aws = {
+      source = "hashicorp/aws" == Namespace/provider
+      version = "5.54.1"
+    }
+  }
+}
+
+provider "aws" {
+  # Configuration options
+}
+
+________ 
+
+Métodos de acesso na aws
+
+https://www.youtube.com/watch?v=JZRMA1NyNlE 
+
+________
+
