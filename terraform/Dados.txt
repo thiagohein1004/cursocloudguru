@@ -1,7 +1,5 @@
 User:
 tgoterraform
-AKIASUUSB2H6OCZIE57J
-jjcOg6JByPdwgOA3WQSSggjO1QvGt+t0DKQpFFMG
 us-west-2
 
 Terraform
